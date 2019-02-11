@@ -1,0 +1,43 @@
+FROM node:10.15.0-alpine
+
+# Installs latest Chromium package.
+RUN echo @edge http://nl.alpinelinux.org/alpine/latest-stable/community >> /etc/apk/repositories \
+    && echo @edge http://nl.alpinelinux.org/alpine/latest-stable/main >> /etc/apk/repositories \
+    && apk -U update --no-cache \
+    && apk -U add --no-cache \
+    zlib-dev \
+    xvfb \
+    chromium@edge \
+    harfbuzz@edge \
+    nss@edge \
+    && rm -rf /var/cache/*
+
+RUN chmod -R 777 /usr/local
+
+ENV CHROME_BIN=/usr/bin/chromium-browser \
+    CHROME_PATH=/usr/lib/chromium/
+
+ENV USER=app USERID=7777 USERGID=7777
+ENV CI=true
+
+RUN npm install lighthouse -g --unsafe-perm && npm install chrome-launcher -g --unsafe-perm
+# RUN npm install lighthouse-batch -g --unsafe-perm
+
+RUN chmod -R 777 /usr/local/lib
+
+# Create app user
+RUN addgroup -S ${USER} && adduser -S -G ${USER} ${USER} -u ${USERID}
+
+USER ${USER}
+
+RUN mkdir -p /usr/local/lighthouse
+
+VOLUME /usr/local/lighthouse   
+WORKDIR /usr/local/lighthouse
+
+# sudo docker run -v ${PWD}/reports:/lighthouse/reports -u $(id -u ${USER}):$(id -g ${USER}) imageim  https://www.test.ns.nl/stationsinformatie
+
+# sudo docker run -v ${PWD}/reports:/lighthouse/reports UID=$(id -u) GID=$(id -g) imageim  https://www.test.ns.nl/stationsinformatie
+
+# ENTRYPOINT ["lighthouse-batch", "--out=/usr/local/lighthouse", "--verbose", "--sites='https://www.test.ns.nl/stationsinformatie'"]
+ENTRYPOINT ["lighthouse", "--output-path=/usr/local/lighthouse", "--verbose"]
